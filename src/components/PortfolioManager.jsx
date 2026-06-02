@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import {
   PieChart, Pie, Cell, Tooltip,
   ResponsiveContainer, Legend,
@@ -16,7 +16,7 @@ const fmtP = n => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(2)}%`
 const PIE_COLORS_LIGHT = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#84cc16','#ec4899']
 const PIE_COLORS_DARK  = ['#60a5fa','#34d399','#fbbf24','#a78bfa','#f87171','#22d3ee','#a3e635','#f9a8d4']
 
-const TABS = ['保有銘柄', 'チャート', 'リバランス']
+const TABS = ['保有銘柄', 'チャート', 'リバランス', '📸 写真読み込み']
 const REBAL_KEY = 'portfolio-targets-v1'
 
 function loadTargets() {
@@ -52,6 +52,14 @@ export default function PortfolioManager({ holdings, onSave, onDelete, prices, i
   const [allocView, setAllocView] = useState('category')
   const [tab,       setTab]       = useState(0)
   const [targets,   setTargets]   = useState(loadTargets)
+
+  // 写真読み込みタブ用
+  const [imgSrc,     setImgSrc]     = useState(null)
+  const [imgLoading, setImgLoading] = useState(false)
+  const [imgResult,  setImgResult]  = useState(null)  // [{ticker,name,shares,avgCost,...}]
+  const [imgError,   setImgError]   = useState(null)
+  const [importing,  setImporting]  = useState(new Set())
+  const fileRef = useRef(null)
 
   const pc = isDark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
@@ -96,6 +104,69 @@ export default function PortfolioManager({ holdings, onSave, onDelete, prices, i
     setTargets(next)
     localStorage.setItem(REBAL_KEY, JSON.stringify(next))
   }
+
+  // 画像をCanvas経由でリサイズ → base64
+  const resizeImage = useCallback((file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 1568
+        let { width: w, height: h } = img
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+          else        { w = Math.round(w * MAX / h); h = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        const [, b64] = canvas.toDataURL('image/jpeg', 0.88).split(',')
+        resolve({ b64, mediaType: 'image/jpeg' })
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  }), [])
+
+  const handleImageFile = useCallback(async (file) => {
+    if (!file?.type.startsWith('image/')) return
+    setImgError(null)
+    setImgResult(null)
+    const url = URL.createObjectURL(file)
+    setImgSrc(url)
+    setImgLoading(true)
+    try {
+      const { b64, mediaType } = await resizeImage(file)
+      const res = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ image: b64, mediaType }),
+        signal: AbortSignal.timeout(30000),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setImgResult(data.holdings ?? [])
+    } catch (e) {
+      setImgError(e.message)
+    } finally {
+      setImgLoading(false)
+    }
+  }, [resizeImage])
+
+  const importHolding = useCallback((h) => {
+    const id   = `img-${h.ticker}-${Date.now()}`
+    const data = {
+      id,
+      ticker:  h.ticker.toUpperCase().replace(/\s+/g, ''),
+      shares:  Number(h.shares) || 1,
+      avgCost: Number(h.avgCost) || 0,
+      note:    h.name ?? '',
+    }
+    onSave(data)
+    setImporting(prev => new Set(prev).add(h.ticker))
+  }, [onSave])
 
   const rebalRows = useMemo(() => enriched.map(h => {
     const actual  = totalValue > 0 ? h.currentValue / totalValue * 100 : 0
@@ -400,6 +471,134 @@ export default function PortfolioManager({ holdings, onSave, onDelete, prices, i
                 <span style={{ color:'#ef4444' }}>● 乖離5%超（要リバランス）</span>
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab 3: 写真読み込み ── */}
+      {tab === 3 && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">📸 写真でポートフォリオを読み込む</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+            証券口座アプリのスクリーンショットや保有明細の写真を選択してください。<br />
+            AIが自動で保有銘柄・株数・取得単価を読み取ります。
+          </p>
+
+          {/* ドロップゾーン */}
+          <div
+            className="img-dropzone"
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over') }}
+            onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
+            onDrop={e => {
+              e.preventDefault()
+              e.currentTarget.classList.remove('drag-over')
+              handleImageFile(e.dataTransfer.files[0])
+            }}
+          >
+            {imgSrc ? (
+              <img src={imgSrc} alt="portfolio screenshot" className="img-preview" />
+            ) : (
+              <div className="img-dropzone-hint">
+                <span style={{ fontSize: 40 }}>📷</span>
+                <p>タップして写真を選択</p>
+                <p style={{ fontSize: 11, color: 'var(--muted)' }}>またはここにドラッグ&ドロップ</p>
+              </div>
+            )}
+          </div>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={e => handleImageFile(e.target.files[0])}
+          />
+
+          {imgSrc && !imgLoading && (
+            <button className="btn-save" style={{ marginTop: 10, width: '100%' }}
+              onClick={() => fileRef.current?.click()}>
+              別の写真を選択
+            </button>
+          )}
+
+          {/* ローディング */}
+          {imgLoading && (
+            <div className="img-loading">
+              <div className="img-spinner" />
+              <p>AIが画像を解析中... (最大30秒)</p>
+            </div>
+          )}
+
+          {/* エラー */}
+          {imgError && (
+            <div className="img-error">
+              <strong>エラー:</strong> {imgError}
+              {imgError.includes('ANTHROPIC_API_KEY') && (
+                <p style={{ marginTop: 8, fontSize: 12 }}>
+                  Vercelの環境変数に <code>ANTHROPIC_API_KEY</code> を設定してください。
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 解析結果 */}
+          {imgResult && !imgLoading && (
+            <div className="img-result">
+              <h3 className="img-result-title">
+                {imgResult.length > 0
+                  ? `${imgResult.length}件の銘柄を検出しました`
+                  : '銘柄を検出できませんでした'}
+              </h3>
+              {imgResult.length === 0 && (
+                <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+                  別の角度やより鮮明な写真をお試しください。
+                </p>
+              )}
+              {imgResult.length > 0 && (
+                <>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                    内容を確認して「追加」ボタンを押してください。取得単価が0の場合は後から編集できます。
+                  </p>
+                  <div className="img-result-list">
+                    {imgResult.map((h, i) => {
+                      const done = importing.has(h.ticker)
+                      return (
+                        <div key={i} className={`img-result-row${done ? ' imported' : ''}`}>
+                          <div className="img-result-info">
+                            <span className="img-result-ticker">{h.ticker}</span>
+                            <span className="img-result-name">{h.name}</span>
+                            <span className="img-result-detail">
+                              {h.shares}株 / 取得単価 {h.avgCost ? `$${Number(h.avgCost).toFixed(2)}` : '不明'}
+                              {h.currency === 'JPY' ? ' (¥)' : ''}
+                            </span>
+                          </div>
+                          <button
+                            className={`btn-save img-import-btn${done ? ' done' : ''}`}
+                            onClick={() => !done && importHolding(h)}
+                            disabled={done}
+                          >
+                            {done ? '✓ 追加済み' : '＋ 追加'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {imgResult.some(h => !importing.has(h.ticker)) && (
+                    <button
+                      className="btn-save"
+                      style={{ marginTop: 16, width: '100%', background: '#10b981' }}
+                      onClick={() => imgResult.forEach(h => !importing.has(h.ticker) && importHolding(h))}
+                    >
+                      すべて追加（{imgResult.filter(h => !importing.has(h.ticker)).length}件）
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
       )}

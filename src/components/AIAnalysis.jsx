@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ETFS, INTL_ETFS, CAT_LABELS, REGION_LABELS } from '../etfData'
 
 const ALL_ETFS = [...ETFS, ...INTL_ETFS]
@@ -240,8 +240,123 @@ export default function AIAnalysis({ holdings, prices, market, isDark }) {
   const priorityLabel = { high:'優先', medium:'推奨', low:'参考' }
   const priorityColor = { high:'#ef4444', medium:'#f59e0b', low:'#94a3b8' }
 
+  // Claude AI推薦
+  const [aiRecs,     setAiRecs]     = useState(null)
+  const [aiLoading,  setAiLoading]  = useState(false)
+  const [aiError,    setAiError]    = useState(null)
+  const [aiCached,   setAiCached]   = useState(false)
+
+  const fetchAiRecs = async () => {
+    setAiLoading(true)
+    setAiError(null)
+    setAiCached(false)
+    try {
+      const res = await fetch('/api/ai-recommend', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          holdings: enriched.map(h => ({ ticker: h.ticker, shares: h.shares, avgCost: h.avgCost })),
+          market: { vix: market.vix, yield10y: market.yield10y, sp500Change: market.sp500Change },
+        }),
+        signal: AbortSignal.timeout(30000),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setAiRecs(data.recommendations ?? [])
+    } catch (e) {
+      setAiError(e.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const catColor = { '成長':'#8b5cf6', '防御':'#10b981', '配当':'#f59e0b', '国際':'#3b82f6', 'コモディティ':'#f97316', '債券':'#06b6d4' }
+  const priColor = { '高':'#ef4444', '中':'#f59e0b', '低':'#94a3b8' }
+
   return (
     <div className="ai-wrap">
+
+      {/* ── Claude AI推薦 ── */}
+      <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">🤖 Claude AI おすすめ銘柄</h2>
+            <span className="card-sub">あなたのポートフォリオ・市場状況を分析して次の買いを提案</span>
+          </div>
+          <button
+            className="btn-save ai-rec-fetch-btn"
+            onClick={fetchAiRecs}
+            disabled={aiLoading}
+            style={{ background: '#8b5cf6', minWidth: 110 }}
+          >
+            {aiLoading ? '分析中...' : aiRecs ? '再取得' : '✨ 推薦を取得'}
+          </button>
+        </div>
+
+        {!aiRecs && !aiLoading && !aiError && (
+          <div className="ai-rec-placeholder">
+            <p>「推薦を取得」ボタンを押すと、Claude AIが現在の保有内容と市場状況を分析して最適なETFを提案します。</p>
+            <ul className="ai-rec-feature-list">
+              <li>📊 ポートフォリオのギャップを自動検出</li>
+              <li>📈 VIX・金利を踏まえたタイミング分析</li>
+              <li>🌍 地理的・セクター分散の改善提案</li>
+            </ul>
+          </div>
+        )}
+
+        {aiLoading && (
+          <div className="img-loading">
+            <div className="img-spinner" style={{ borderTopColor: '#8b5cf6' }} />
+            <p>Claudeが分析中です... (最大30秒)</p>
+          </div>
+        )}
+
+        {aiError && (
+          <div className="img-error">
+            <strong>エラー:</strong> {aiError}
+            {aiError.includes('ANTHROPIC_API_KEY') && (
+              <p style={{ marginTop: 8, fontSize: 12 }}>
+                Vercelの環境変数に <code>ANTHROPIC_API_KEY</code> を設定してください。
+              </p>
+            )}
+          </div>
+        )}
+
+        {aiRecs && !aiLoading && (
+          <>
+            <div className="claude-recs-grid">
+              {aiRecs.map((r, i) => (
+                <div key={i} className="claude-rec-card" style={{ '--rc': catColor[r.category] ?? '#3b82f6' }}>
+                  <div className="claude-rec-head">
+                    <span className="claude-rec-ticker">{r.ticker}</span>
+                    <span className="claude-rec-name">{r.nameJa || r.name}</span>
+                    <div style={{ display:'flex', gap:6, marginLeft:'auto', flexShrink:0 }}>
+                      <span className="ai-priority-badge" style={{ color: priColor[r.priority] ?? '#94a3b8', borderColor: priColor[r.priority] ?? '#94a3b8' }}>
+                        {r.priority}優先度
+                      </span>
+                      <span className="ai-priority-badge" style={{ color: catColor[r.category] ?? '#3b82f6', borderColor: catColor[r.category] ?? '#3b82f6' }}>
+                        {r.category}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="claude-rec-reason">{r.reason}</p>
+                  <div className="claude-rec-meta">
+                    {r.expenseRatio != null && (
+                      <span>経費率 {(r.expenseRatio * 100).toFixed(2)}%/年</span>
+                    )}
+                    {r.targetWeight != null && (
+                      <span>推奨比率 {r.targetWeight}%</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12 }}>
+              ※ AIの推薦は参考情報です。投資判断はご自身の責任で行ってください。
+            </p>
+          </>
+        )}
+      </div>
 
       {/* ── Market Regime ── */}
       <div className="card" style={{ borderLeft:`4px solid ${regime.color}` }}>
