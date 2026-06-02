@@ -987,3 +987,170 @@
   .sc-value { font-size: 17px; }
   .rebal-table { font-size: 11px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   iPhone / Touch 特化スタイル
+   ═══════════════════════════════════════════════════════════ */
+
+/* タップハイライト除去・テキスト選択防止 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* iOS入力フォームズーム防止 (16px以上でiOSはズームしない) */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* スムーズスクロール */
+.main {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── ボトムナビ iPhone最適化 ────────────────────────────── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    padding: 8px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
+  }
+
+  .bottom-nav-btn {
+    min-height: 56px;
+    padding: 6px 2px 4px;
+    border-radius: 12px;
+    position: relative;
+    transition: color .15s, background .15s;
+  }
+
+  .bottom-nav-btn::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 10px;
+    background: transparent;
+    transition: background .15s;
+  }
+
+  .bottom-nav-btn:active::after {
+    background: var(--border);
+  }
+
+  .bottom-nav-btn.active {
+    color: var(--accent);
+  }
+
+  .bottom-nav-btn.active .bn-icon {
+    transform: scale(1.2) translateY(-1px);
+  }
+
+  .bn-icon {
+    font-size: 22px;
+    line-height: 1;
+    transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  .bn-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .2px;
+  }
+
+  /* アクティブインジケーター */
+  .bottom-nav-btn.active .bn-icon::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin: 2px auto 0;
+  }
+}
+
+/* ── ヘッダー iPhone最適化 ──────────────────────────────── */
+@media (max-width: 768px) {
+  .header {
+    padding: 10px 14px 10px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    gap: 10px;
+  }
+
+  .btn-refresh, .btn-theme {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  .update-bar {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+}
+
+/* ── カード・フォーム タップ改善 ──────────────────────── */
+@media (max-width: 768px) {
+  .card {
+    border-radius: 16px;
+  }
+
+  /* すべてのボタン最小タップサイズ44px確保 */
+  button:not(.bottom-nav-btn):not(.nav-btn) {
+    min-height: 40px;
+  }
+
+  /* テーブル行の高さ確保 */
+  td, th {
+    padding: 10px 8px !important;
+  }
+
+  /* チェックボックス・アイコンボタン */
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  /* select要素 */
+  select {
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+
+  /* テキスト入力 */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+}
+
+/* ── スワイプ スライドアニメーション ───────────────────── */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.main.slide-left  { animation: slideInLeft  .3s cubic-bezier(.25,.46,.45,.94) both; }
+.main.slide-right { animation: slideInRight .3s cubic-bezier(.25,.46,.45,.94) both; }
+
+/* ── スワイプヒント (初回のみ表示) ────────────────────── */
+@media (max-width: 768px) {
+  .main {
+    /* スワイプ操作のために水平スクロールを無効化 */
+    overflow-x: hidden;
+  }
+}

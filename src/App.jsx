@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { ETFS, INTL_ETFS, DEFAULT_MARKET, SAMPLE_HOLDINGS } from './etfData'
 import { useMarketData } from './hooks/useMarketData'
+import { useSwipe } from './hooks/useSwipe'
 import MarketOverview    from './components/MarketOverview'
 import SectorChart       from './components/SectorChart'
 import SectorRotation    from './components/SectorRotation'
@@ -32,6 +33,7 @@ export default function App() {
   const [isDark,   setIsDark]   = useState(() => load('etf-dark', false))
   const [owned,    setOwned]    = useState(() => new Set(load('etf-owned', [])))
   const [section,  setSection]  = useState('market')
+  const [slideDir, setSlideDir] = useState('')
   const [holdings, setHoldings] = useState(() => load('etf-holdings', SAMPLE_HOLDINGS))
 
   const { market, setMarket, prices, liveStatus, lastUpdate, refetch } = useMarketData(
@@ -43,6 +45,24 @@ export default function App() {
   useEffect(() => { localStorage.setItem('etf-market',   JSON.stringify(market))         }, [market])
   useEffect(() => { localStorage.setItem('etf-owned',    JSON.stringify([...owned]))     }, [owned])
   useEffect(() => { localStorage.setItem('etf-holdings', JSON.stringify(holdings))       }, [holdings])
+
+  const SECTION_IDS = SECTIONS.map(s => s.id)
+  const navigateSection = useCallback(dir => {
+    setSection(prev => {
+      const idx = SECTION_IDS.indexOf(prev)
+      const next = dir === 'left'
+        ? SECTION_IDS[(idx + 1) % SECTION_IDS.length]
+        : SECTION_IDS[(idx - 1 + SECTION_IDS.length) % SECTION_IDS.length]
+      setSlideDir(dir)
+      setTimeout(() => setSlideDir(''), 350)
+      return next
+    })
+  }, [SECTION_IDS])
+
+  const swipeHandlers = useSwipe({
+    onLeft:  () => navigateSection('left'),
+    onRight: () => navigateSection('right'),
+  })
 
   const toggleOwned = t => setOwned(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
 
@@ -107,7 +127,15 @@ export default function App() {
           {SECTIONS.map(s => (
             <button key={s.id}
               className={`nav-btn${section === s.id ? ' active' : ''}`}
-              onClick={() => setSection(s.id)}>
+              onClick={() => {
+                const cur = SECTION_IDS.indexOf(section)
+                const nxt = SECTION_IDS.indexOf(s.id)
+                if (cur === nxt) return
+                const dir = nxt > cur ? 'left' : 'right'
+                setSlideDir(dir)
+                setTimeout(() => setSlideDir(''), 350)
+                setSection(s.id)
+              }}>
               {s.label}
             </button>
           ))}
@@ -143,7 +171,7 @@ export default function App() {
       </header>
 
       {/* ── Main content ── */}
-      <main className="main">
+      <main className={`main${slideDir ? ` slide-${slideDir}` : ''}`} {...swipeHandlers}>
         {section === 'market' && (
           <>
             <MarketOverview market={market} onUpdate={updateMarket} />
@@ -184,7 +212,15 @@ export default function App() {
         {SECTIONS.map(s => (
           <button key={s.id}
             className={`bottom-nav-btn${section === s.id ? ' active' : ''}`}
-            onClick={() => setSection(s.id)}>
+            onClick={() => {
+              const cur = SECTION_IDS.indexOf(section)
+              const nxt = SECTION_IDS.indexOf(s.id)
+              if (cur === nxt) return
+              const dir = nxt > cur ? 'left' : 'right'
+              setSlideDir(dir)
+              setTimeout(() => setSlideDir(''), 350)
+              setSection(s.id)
+            }}>
             <span className="bn-icon">{s.icon}</span>
             <span className="bn-label">{s.label}</span>
           </button>
