@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ETFS, INTL_ETFS, DEFAULT_MARKET, SAMPLE_HOLDINGS } from './etfData'
 import { useMarketData } from './hooks/useMarketData'
 import MarketOverview    from './components/MarketOverview'
@@ -56,8 +56,24 @@ export default function App() {
     ...m, ...updated, lastUpdate: new Date().toLocaleString('ja-JP') + ' JST'
   }))
 
-  const vixHigh   = market.vix >= 25
-  const sp500Chg  = prices['^GSPC']?.changePct ?? market.sp500Change
+  const vixHigh  = market.vix >= 25
+  const sp500Chg = prices['^GSPC']?.changePct ?? market.sp500Change
+
+  const INTERVAL  = 30
+  const [countdown, setCountdown] = useState(INTERVAL)
+  const countRef  = useRef(INTERVAL)
+
+  // カウントダウン: lastUpdate が変わるたびに 30 → 0 へカウント
+  useEffect(() => {
+    countRef.current = INTERVAL
+    setCountdown(INTERVAL)
+    const t = setInterval(() => {
+      countRef.current -= 1
+      if (countRef.current < 0) countRef.current = 0
+      setCountdown(countRef.current)
+    }, 1000)
+    return () => clearInterval(t)
+  }, [lastUpdate])
 
   const liveDot = {
     live:    '🟢',
@@ -65,6 +81,17 @@ export default function App() {
     loading: '⏳',
     error:   '🔴',
   }[liveStatus] ?? '⏳'
+
+  const liveLabel = {
+    live:    'LIVE',
+    demo:    'DEMO',
+    loading: '取得中',
+    error:   'エラー',
+  }[liveStatus] ?? '...'
+
+  const updateTimeStr = lastUpdate
+    ? lastUpdate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '--:--:--'
 
   return (
     <div className={`root${isDark ? ' dark' : ''}`}>
@@ -90,9 +117,6 @@ export default function App() {
           {vixHigh && <span className="vix-alert-badge">⚠️ VIX高</span>}
 
           <div className="header-market-quick">
-            <span title={`${liveStatus === 'live' ? 'LIVE' : 'デモ'} ${lastUpdate?.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' }) ?? ''}`}>
-              {liveDot}
-            </span>
             <span>
               VIX <strong style={{ color: market.vix >= 25 ? '#ef4444' : market.vix >= 20 ? '#f59e0b' : '#10b981' }}>
                 {market.vix.toFixed(1)}
@@ -104,6 +128,13 @@ export default function App() {
                 {sp500Chg >= 0 ? '+' : ''}{sp500Chg.toFixed(2)}%
               </strong></span>
             )}
+          </div>
+
+          <div className="update-bar">
+            <span className="update-dot">{liveDot}</span>
+            <span className="update-label">{liveLabel}</span>
+            <span className="update-time">{updateTimeStr}</span>
+            <span className="update-countdown">次更新 {countdown}s</span>
           </div>
 
           <button className="btn-refresh" onClick={refetch} title="データ更新">↻</button>

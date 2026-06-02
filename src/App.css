@@ -124,6 +124,33 @@
   .header-market-quick span:nth-child(4) { display: none; }
 }
 
+.update-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.update-dot   { font-size: 10px; }
+.update-label { font-weight: 700; color: var(--accent); }
+.update-time  { color: var(--text); font-variant-numeric: tabular-nums; }
+.update-countdown {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+  text-align: right;
+}
+@media (max-width: 600px) {
+  .update-time { display: none; }
+}
+@media (max-width: 420px) {
+  .update-countdown { display: none; }
+}
+
 .btn-refresh, .btn-theme {
   width: 32px; height: 32px;
   background: var(--surface2);
