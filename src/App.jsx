@@ -71,7 +71,7 @@ export default function App() {
       {/* ── Header ── */}
       <header className="header">
         <div className="header-left">
-          <h1>🇺🇸 米国ETF ダッシュボード</h1>
+          <h1>📈 株ウォッチ</h1>
           <span className="header-sub">US ETF Investment Dashboard</span>
         </div>
 

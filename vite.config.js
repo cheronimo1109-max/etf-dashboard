@@ -11,9 +11,9 @@ export default defineConfig({
 
       // ── Manifest (Web App Manifest) ───────────────────────
       manifest: {
-        name: '米国ETF ダッシュボード',
-        short_name: 'ETFダッシュ',
-        description: '米国・世界ETFをリアルタイムで追跡・分析できる投資ダッシュボード',
+        name: '株ウォッチ',
+        short_name: '株ウォッチ',
+        description: '米国・世界ETFをリアルタイムで追跡・AI分析できる投資ダッシュボード',
         lang: 'ja',
         theme_color: '#0c1445',
         background_color: '#0c1445',
