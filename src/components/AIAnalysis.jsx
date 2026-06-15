@@ -314,12 +314,13 @@ export default function AIAnalysis({ holdings, prices, market, isDark }) {
         {aiError && (
           <div className="img-error">
             <strong>エラー:</strong> {aiError}
-            {aiError.includes('ANTHROPIC_API_KEY') && (
-              <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.7 }}>
-                <strong>設定手順:</strong><br />
-                1. <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" style={{ color:'var(--accent)' }}>console.anthropic.com</a> でAPIキーを取得<br />
+            {aiError.includes('GEMINI_API_KEY') && (
+              <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.8 }}>
+                <strong>無料APIキーの取得手順:</strong><br />
+                1. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color:'var(--accent)' }}>aistudio.google.com/app/apikey</a> でキーを発行（無料）<br />
                 2. Vercel → プロジェクト → Settings → Environment Variables<br />
-                3. <code>ANTHROPIC_API_KEY</code> を追加してRedeploy
+                3. キー名 <code>GEMINI_API_KEY</code>、値に発行したキーを貼り付けてSave<br />
+                4. Deployments → 最新のデプロイ → Redeploy
               </div>
             )}
             {(aiError.includes('404') || aiError.includes('Failed to fetch')) && (
