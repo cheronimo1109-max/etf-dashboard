@@ -315,8 +315,16 @@ export default function AIAnalysis({ holdings, prices, market, isDark }) {
           <div className="img-error">
             <strong>エラー:</strong> {aiError}
             {aiError.includes('ANTHROPIC_API_KEY') && (
+              <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.7 }}>
+                <strong>設定手順:</strong><br />
+                1. <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" style={{ color:'var(--accent)' }}>console.anthropic.com</a> でAPIキーを取得<br />
+                2. Vercel → プロジェクト → Settings → Environment Variables<br />
+                3. <code>ANTHROPIC_API_KEY</code> を追加してRedeploy
+              </div>
+            )}
+            {(aiError.includes('404') || aiError.includes('Failed to fetch')) && (
               <p style={{ marginTop: 8, fontSize: 12 }}>
-                Vercelの環境変数に <code>ANTHROPIC_API_KEY</code> を設定してください。
+                ローカル開発環境では動作しません。Vercelにデプロイして使用してください。
               </p>
             )}
           </div>

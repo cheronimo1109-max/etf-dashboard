@@ -1,6 +1,14 @@
 // Vercel Serverless Function — Claude Vision でポートフォリオ画像を解析
 export const config = { maxDuration: 30 }
 
+function extractJSON(text) {
+  const stripped = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '')
+  const start = stripped.indexOf('[')
+  const end   = stripped.lastIndexOf(']')
+  if (start === -1 || end === -1 || end <= start) return null
+  return stripped.slice(start, end + 1)
+}
+
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 
 const PROMPT = `この画像は証券口座・投資アプリのポートフォリオ画面、または投資明細書です。
@@ -63,11 +71,15 @@ export default async function handler(req, res) {
     const json = await response.json()
     const text = json.content?.[0]?.text ?? ''
 
-    // JSON配列を抽出
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) return res.json({ holdings: [], raw: text })
+    const raw = extractJSON(text)
+    if (!raw) return res.json({ holdings: [] })
 
-    const holdings = JSON.parse(match[0])
+    let holdings
+    try {
+      holdings = JSON.parse(raw)
+    } catch {
+      return res.json({ holdings: [] })
+    }
     return res.json({ holdings })
 
   } catch (e) {
