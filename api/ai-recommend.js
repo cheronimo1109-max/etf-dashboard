@@ -1,8 +1,8 @@
 // Vercel Serverless Function — Gemini Flash (無料枠) でETF推薦
 export const config = { maxDuration: 30 }
 
-const GEMINI_MODEL   = 'gemini-1.5-flash'
-const GEMINI_FALLBACK = 'gemini-1.5-flash-8b'
+const GEMINI_MODEL    = 'gemini-2.0-flash-lite'
+const GEMINI_FALLBACK = 'gemini-2.0-flash'
 
 function verifyRequest(req) {
   // 1) 共有シークレットが一致すれば許可
