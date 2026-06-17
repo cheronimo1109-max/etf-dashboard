@@ -253,7 +253,7 @@ export default function AIAnalysis({ holdings, prices, market, isDark }) {
     try {
       const res = await fetch('/api/ai-recommend', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-secret': import.meta.env.VITE_API_SECRET ?? '' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           holdings: enriched.map(h => ({ ticker: h.ticker, shares: h.shares, avgCost: h.avgCost })),
           market: { vix: market.vix, yield10y: market.yield10y, sp500Change: market.sp500Change },

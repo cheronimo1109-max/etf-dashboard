@@ -141,7 +141,7 @@ export default function PortfolioManager({ holdings, onSave, onDelete, prices, i
       const { b64, mediaType } = await resizeImage(file)
       const res = await fetch('/api/analyze-image', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-secret': import.meta.env.VITE_API_SECRET ?? '' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ image: b64, mediaType }),
         signal: AbortSignal.timeout(30000),
       })

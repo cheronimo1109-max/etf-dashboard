@@ -9,10 +9,12 @@ function extractJSON(text) {
   return stripped.slice(start, end + 1)
 }
 
-function verifySecret(req) {
-  const expected = process.env.API_SECRET
-  if (!expected) return true
-  return req.headers['x-api-secret'] === expected
+function verifyRequest(req) {
+  const secret = process.env.API_SECRET
+  if (secret && req.headers['x-api-secret'] === secret) return true
+  const src = req.headers.origin ?? req.headers.referer ?? ''
+  if (src.includes('.vercel.app') || src.includes('localhost') || src.includes('127.0.0.1')) return true
+  return !secret
 }
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
@@ -39,7 +41,7 @@ const PROMPT = `この画像は証券口座・投資アプリのポートフォ�
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  if (!verifySecret(req)) {
+  if (!verifyRequest(req)) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 

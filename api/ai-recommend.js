@@ -3,16 +3,25 @@ export const config = { maxDuration: 30 }
 
 const GEMINI_MODEL = 'gemini-2.0-flash'
 
-function verifySecret(req) {
-  const expected = process.env.API_SECRET
-  if (!expected) return true // 未設定の場合はスキップ
-  return req.headers['x-api-secret'] === expected
+function verifyRequest(req) {
+  // 1) 共有シークレットが一致すれば許可
+  const secret = process.env.API_SECRET
+  if (secret && req.headers['x-api-secret'] === secret) return true
+
+  // 2) 自アプリのドメイン（Vercel / localhost）からのリクエストを許可
+  const origin  = req.headers.origin  ?? ''
+  const referer = req.headers.referer ?? ''
+  const src = origin || referer
+  if (src.includes('.vercel.app') || src.includes('localhost') || src.includes('127.0.0.1')) return true
+
+  // 3) API_SECRET 未設定なら全許可（初期設定時の安全弁）
+  return !secret
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  if (!verifySecret(req)) {
+  if (!verifyRequest(req)) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
