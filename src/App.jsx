@@ -114,7 +114,7 @@ export default function App() {
     : '--:--:--'
 
   return (
-    <div className={`root${isDark ? ' dark' : ''}`}>
+    <div className={`root${isDark ? ' dark' : ''}`} {...swipeHandlers}>
       {/* ── Header ── */}
       <header className="header">
         <div className="header-left">
@@ -171,7 +171,7 @@ export default function App() {
       </header>
 
       {/* ── Main content ── */}
-      <main className={`main${slideDir ? ` slide-${slideDir}` : ''}`} {...swipeHandlers}>
+      <main className={`main${slideDir ? ` slide-${slideDir}` : ''}`}>
         {section === 'market' && (
           <>
             <MarketOverview market={market} onUpdate={updateMarket} />

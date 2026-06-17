@@ -1,3 +1,9 @@
+/* ─── グローバル横スクロール禁止 ─────────────────────────── */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 /* ─── Variables ──────────────────────────────────────────── */
 .root {
   --bg:      #f0f4f8;
@@ -15,6 +21,8 @@
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
   transition: background .25s, color .25s;
 }
 
@@ -1294,48 +1302,51 @@ button, a, [role="button"] {
   }
 }
 
-/* ── ヘッダー iPhone縦持ち(375〜430px)専用 ─────────────── */
+/* ── ヘッダー iPhone縦持ち(〜430px)専用 ───────────────── */
 @media (max-width: 430px) {
   .header {
     padding: 6px 10px;
     padding-top: calc(6px + env(safe-area-inset-top, 0px));
     gap: 6px;
+    /* はみ出しを物理的に切る */
+    max-width: 100vw;
   }
 
-  /* タイトルを縮小・省略 */
+  /* タイトル：縮小して省略 */
+  .header-left {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
   .header h1 {
     font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 110px;
   }
-
   .header-sub { display: none; }
 
-  /* header-rightを縮小可能に */
+  /* 右ブロック：縮まないが中身を最小化 */
   .header-right {
-    flex-shrink: 1;
+    flex: 0 0 auto;
     gap: 5px;
-    min-width: 0;
+    align-items: center;
   }
 
-  /* 市場数値（VIX・10Y・S&P）は非表示 — マーケット画面で確認できる */
-  .header-market-quick { display: none; }
+  /* 市場数値・アラート = 非表示 */
+  .header-market-quick,
+  .vix-alert-badge { display: none !important; }
 
-  /* VIXアラートバッジも非表示 */
-  .vix-alert-badge { display: none; }
-
-  /* update-barはドット＋ラベルのみ */
+  /* update-bar = ドット＋ラベルのみ */
   .update-bar {
-    padding: 4px 6px;
+    padding: 3px 6px;
     gap: 3px;
-    white-space: nowrap;
+    font-size: 10px;
   }
   .update-time,
-  .update-countdown { display: none; }
+  .update-countdown { display: none !important; }
 
-  /* ボタンは44×44px確保 */
+  /* ボタン = 44×44px タップ領域確保 */
   .btn-refresh, .btn-theme {
     width: 44px;
     height: 44px;
