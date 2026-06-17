@@ -9,6 +9,12 @@ function extractJSON(text) {
   return stripped.slice(start, end + 1)
 }
 
+function verifySecret(req) {
+  const expected = process.env.API_SECRET
+  if (!expected) return true
+  return req.headers['x-api-secret'] === expected
+}
+
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 
 const PROMPT = `この画像は証券口座・投資アプリのポートフォリオ画面、または投資明細書です。
@@ -32,6 +38,10 @@ const PROMPT = `この画像は証券口座・投資アプリのポートフォ�
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
+
+  if (!verifySecret(req)) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {

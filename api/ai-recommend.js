@@ -3,8 +3,18 @@ export const config = { maxDuration: 30 }
 
 const GEMINI_MODEL = 'gemini-2.0-flash'
 
+function verifySecret(req) {
+  const expected = process.env.API_SECRET
+  if (!expected) return true // 未設定の場合はスキップ
+  return req.headers['x-api-secret'] === expected
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
+
+  if (!verifySecret(req)) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
