@@ -323,6 +323,11 @@ export default function AIAnalysis({ holdings, prices, market, isDark }) {
                 4. Deployments → 最新のデプロイ → Redeploy
               </div>
             )}
+            {aiError.includes('利用制限') && (
+              <p style={{ marginTop: 8, fontSize: 12 }}>
+                Gemini無料枠は15回/分の制限があります。少し待ってから再度お試しください。
+              </p>
+            )}
             {(aiError.includes('404') || aiError.includes('Failed to fetch')) && (
               <p style={{ marginTop: 8, fontSize: 12 }}>
                 ローカル開発環境では動作しません。Vercelにデプロイして使用してください。

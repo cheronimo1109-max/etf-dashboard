@@ -1,7 +1,8 @@
 // Vercel Serverless Function — Gemini Flash (無料枠) でETF推薦
 export const config = { maxDuration: 30 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODEL   = 'gemini-1.5-flash'
+const GEMINI_FALLBACK = 'gemini-1.5-flash-8b'
 
 function verifyRequest(req) {
   // 1) 共有シークレットが一致すれば許可
@@ -66,10 +67,9 @@ export default async function handler(req, res) {
   }
 ]`
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
-
-  try {
-    const response = await fetch(url, {
+  async function callGemini(model) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+    return fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -82,10 +82,22 @@ export default async function handler(req, res) {
       }),
       signal: AbortSignal.timeout(25000),
     })
+  }
+
+  try {
+    let response = await callGemini(GEMINI_MODEL)
+
+    // レートリミット時はフォールバックモデルで再試行
+    if (response.status === 429) {
+      response = await callGemini(GEMINI_FALLBACK)
+    }
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
       const msg = err?.error?.message ?? `HTTP ${response.status}`
+      if (response.status === 429) {
+        return res.status(429).json({ error: 'APIの利用制限に達しました。1分ほど待ってから再度お試しください。' })
+      }
       return res.status(502).json({ error: `Gemini API エラー: ${msg}` })
     }
 
